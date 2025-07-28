@@ -36,10 +36,10 @@ export class UIManager {
     this.undoButton = document.getElementById('undo-button');
     this.redoButton = document.getElementById('redo-button');
 
-    // ADDED: Initialize new UI elements for import/export
-    this.exportButton = document.getElementById('export-notes');
-    this.importButton = document.getElementById('import-notes');
+    // MODIFIED: Point to the new/re-purposed buttons
+    this.importButton = document.getElementById('import-note');
     this.importFileInput = document.getElementById('import-file-input');
+    this.exportCurrentNoteButton = document.getElementById('export-current-note');
   }
 
   attachEventListeners() {
@@ -52,10 +52,10 @@ export class UIManager {
     this.searchInput.addEventListener('input', () => this.filterNotes());
     this.noteTitle.addEventListener('input', (e) => this.handleNoteChange(e));
     
-    // ADDED: Attach listeners for new import/export buttons
-    this.exportButton.addEventListener('click', () => this.handleExport());
+    // MODIFIED: Attach listeners for the new button setup
     this.importButton.addEventListener('click', () => this.handleImportClick());
     this.importFileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+    this.exportCurrentNoteButton.addEventListener('click', () => this.handleExportCurrentNote());
 
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -193,15 +193,25 @@ export class UIManager {
     }
   }
 
-  // ADDED: New handler methods for import/export functionality
-  handleExport() {
-    const dataStr = this.noteManager.exportNotes();
+  // MODIFIED: Replaced old import/export handlers with new ones
+
+  handleExportCurrentNote() {
+    if (!this.currentNote) return; // Safety check
+
+    const dataStr = this.noteManager.exportSingleNote(this.currentNote);
+    if (!dataStr) {
+        alert('Could not export note. See console for details.');
+        return;
+    }
+
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `script-writer-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    // Use the note's title for the filename for better UX
+    const fileName = (this.currentNote.title || 'Untitled Note').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    a.download = `${fileName}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -216,10 +226,10 @@ export class UIManager {
     const file = event.target.files[0];
     if (!file) return;
 
-    // MODIFIED: Updated dialog text to reflect the merge behavior
+    // The confirmation dialog is still a good idea
     const confirmed = await dialog.confirm({
-      title: 'Import Notes?',
-      message: 'This will add all notes from the file to your current list. Existing notes will not be affected. Continue?',
+      title: 'Import Note?',
+      message: 'This will add the note from the file to your list. Continue?',
       confirmText: 'Yes, Import',
       cancelText: 'Cancel'
     });
@@ -229,14 +239,14 @@ export class UIManager {
       reader.onload = (e) => {
         const jsonString = e.target.result;
         
-        // MODIFIED: Call the correct merge method from noteManager
-        const success = this.noteManager.importAndMergeNotes(jsonString);
+        // Call the new single-note import method
+        const success = this.noteManager.importSingleNote(jsonString);
         
         if (success) {
           this.renderNotesList();
-          alert('Notes imported successfully!');
+          alert('Note imported successfully!');
         } else {
-          alert('Import failed. The file may be corrupted or in the wrong format. See console for details.');
+          alert('Import failed. The file may be corrupted or not a valid note file. See console for details.');
         }
       };
 
@@ -249,7 +259,6 @@ export class UIManager {
     
     event.target.value = null;
   }
-  // END of new methods
 
   handleNoteChange(e) {
     if (!this.currentNote) return;
