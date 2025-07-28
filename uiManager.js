@@ -244,7 +244,7 @@ export class UIManager {
         
         if (success) {
           this.renderNotesList();
-          alert('Note imported successfully!');
+         // alert('Note imported successfully!');
         } else {
           alert('Import failed. The file may be corrupted or not a valid note file. See console for details.');
         }
