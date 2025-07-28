@@ -449,8 +449,32 @@ h1 {
     touch-action: manipulation;
   }
 
+  /* --- Add these rules inside the mobile media query --- */
+
+/* 1. Give the whole header a more balanced padding and ensure vertical alignment */
+header {
+  align-items: center; /* This is the key for vertical alignment */
+  padding: 0.75rem var(--mobile-padding);
 }
 
+/* 2. Add space between the Import and New buttons */
+.toolbar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem; /* This adds a nice, small space between buttons */
+}
+
+/* 3. Ensure the title and its icon are perfectly aligned */
+.header-title {
+  align-items: center; /* This vertically aligns the pencil and text */
+}
+
+/* 4. Slightly reduce the title font size on very small screens if needed */
+h1 {
+  font-size: 1.4rem;
+}
+
+}
 
 /* Add these at the end of your style.css file */
 
