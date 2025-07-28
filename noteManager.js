@@ -51,96 +51,90 @@ export class NoteManager {
     });
   }
 
-  // --- ADDED: NEW METHODS FOR IMPORT/EXPORT ---
+  // --- MODIFIED: Methods now handle a SINGLE note ---
 
   /**
-   * Returns all notes as a JSON string for export.
-   * @returns {string} All notes formatted as a JSON string.
+   * Returns a single note object as a JSON string for export.
+   * @param {object} noteObject The note to be exported.
+   * @returns {string|null} The note formatted as a JSON string, or null if invalid.
    */
-  exportNotes() {
-    return JSON.stringify(this.notes, null, 2); // null, 2 for pretty-printing
+  exportSingleNote(noteObject) {
+    if (!noteObject || typeof noteObject.id === 'undefined') {
+        console.error("Invalid note object provided for export.");
+        return null;
+    }
+    return JSON.stringify(noteObject, null, 2);
   }
   
   /**
-   * Imports and merges notes from a JSON string with existing notes.
-   * Does not overwrite. If an imported note has an ID that already exists,
+   * Imports a single note from a JSON string and adds it to the list.
+   * Does not overwrite. If the imported note has an ID that already exists,
    * it's re-created as a new note with a new unique ID.
-   * @param {string} jsonString The JSON string of notes to import.
+   * @param {string} jsonString The JSON string of the note to import.
    * @returns {boolean} True if import was successful, false otherwise.
    */
-  importAndMergeNotes(jsonString) {
+  importSingleNote(jsonString) {
     try {
-      const importedNotes = JSON.parse(jsonString);
+      const importedNote = JSON.parse(jsonString);
 
-      if (!this._validateImportData(importedNotes)) {
-        console.error('Import validation failed. The file is not a valid notes backup.');
+      if (!this._validateSingleNoteData(importedNote)) {
+        console.error('Import validation failed. The file is not a valid note.');
         return false;
       }
       
       const existingIds = new Set(this.notes.map(note => note.id));
-      let newNotesAdded = 0;
+      let noteToAdd = { ...importedNote };
 
-      importedNotes.forEach(importedNote => {
-        let noteToAdd = { ...importedNote };
-
-        if (existingIds.has(noteToAdd.id)) {
-          // CONFLICT: The imported note's ID already exists.
-          // Create it as a new note with a new unique ID to avoid conflicts.
-          noteToAdd.id = Date.now() + newNotesAdded;
-          noteToAdd.title = noteToAdd.title ? `${noteToAdd.title} (Imported)` : 'Untitled Note (Imported)';
-          
-          // Generate new IDs for all its internal toggles as well.
-          noteToAdd.toggles = noteToAdd.toggles.map((toggle, i) => ({
-            ...toggle,
-            id: noteToAdd.id + i + 1
-          }));
-        }
-        
-        this.notes.unshift(noteToAdd); 
-        newNotesAdded++;
-      });
+      if (existingIds.has(noteToAdd.id)) {
+        // CONFLICT: The imported note's ID already exists.
+        noteToAdd.id = Date.now();
+        noteToAdd.title = noteToAdd.title ? `${noteToAdd.title} (Imported)` : 'Untitled Note (Imported)';
+        noteToAdd.toggles = noteToAdd.toggles.map((toggle, i) => ({
+          ...toggle,
+          id: noteToAdd.id + i + 1
+        }));
+      }
       
+      this.notes.unshift(noteToAdd); 
       this.saveNotes();
       return true;
 
     } catch (error) {
-      console.error('Failed to parse or import notes:', error);
+      console.error('Failed to parse or import note:', error);
       return false;
     }
   }
 
   /**
-   * Validates the structure of the data to be imported.
+   * Validates the structure of a single note object.
    * @private
-   * @param {any} data The data parsed from the JSON file.
-   * @returns {boolean} True if the data is valid, false otherwise.
+   * @param {any} note The potential note object parsed from the JSON file.
+   * @returns {boolean} True if the data is a valid note, false otherwise.
    */
-  _validateImportData(data) {
-    if (!Array.isArray(data)) {
-      console.error('Validation Error: Imported data is not an array.');
-      return false;
+  _validateSingleNoteData(note) {
+    if (!note || typeof note !== 'object' || Array.isArray(note)) {
+        console.error('Validation Error: Imported data is not a single object.');
+        return false;
     }
 
-    for (const note of data) {
-      const hasBaseKeys = 'id' in note && 'title' in note && 'toggles' in note && 'created' in note && 'updated' in note;
-      if (!hasBaseKeys || !Array.isArray(note.toggles)) {
-        console.error('Validation Error: A note is missing required keys or `toggles` is not an array.', note);
-        return false;
-      }
-      
-      for(const toggle of note.toggles) {
-         const hasToggleKeys = 'id' in toggle && 'title' in toggle && 'content' in toggle && 'isOpen' in toggle;
-         if (!hasToggleKeys) {
-            console.error('Validation Error: A toggle is missing required keys.', toggle);
-            return false;
-         }
-      }
+    const hasBaseKeys = 'id' in note && 'title' in note && 'toggles' in note && 'created' in note && 'updated' in note;
+    if (!hasBaseKeys || !Array.isArray(note.toggles)) {
+      console.error('Validation Error: The note is missing required keys or `toggles` is not an array.', note);
+      return false;
+    }
+    
+    for(const toggle of note.toggles) {
+       const hasToggleKeys = 'id' in toggle && 'title' in toggle && 'content' in toggle && 'isOpen' in toggle;
+       if (!hasToggleKeys) {
+          console.error('Validation Error: A toggle is missing required keys.', toggle);
+          return false;
+       }
     }
 
     return true;
   }
   
-  // --- END OF NEW METHODS ---
+  // --- END OF MODIFIED METHODS ---
 
   saveNotes() {
     StorageManager.save('notes', this.notes);
